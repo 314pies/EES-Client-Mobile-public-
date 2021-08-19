@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<meta charset = "utf-8">
+      <title>IDWater Test Server</title> 
+		<style type = "text/css">
+			body {
+				font-family: Microsoft JhengHei;
+			}
+			table { 
+				width: 1020px;
+                border-collapse: collapse; 
+                background-color: white; 
+            }
+         	table, td, th { 
+         		text-align: center; 
+         		border: 1px solid black; 
+                padding: 4px; 
+            }
+         	th { 
+                color: white;
+                background-color: Navy  ; 
+            }
+         	tr.oddrow{ 
+         		background-color: PowderBlue ;
+         	}
+         	input[type = "text"] {
+         		width: 100px;
+　　　　		}
+		</style>
+		<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+		<script type="text/javascript">
+			var token, email, password, name, birthday, gender, familylist, familyId, isAdd;
+			
+			function SaveLoginParameters(response){
+				if(response.status == "error")
+					return;
+				console.log(JSON.stringify(response));
+				token = response.data.token;
+				email = response.data.email;
+				password = response.data.password;
+				name = response.data.name;
+				birthday = response.data.birthday;
+				gender = response.data.gender;
+				$("#token").val(response.data.token);
+				$("#update_email").val(response.data.email);
+				$("#update_password").val(response.data.password);
+				$("#update_name").val(response.data.name);
+				$("#update_birthday").val(response.data.birthday);
+				if(gender)
+					$("#update_gender").prop("checked", true);
+				else
+					$("#update_gender").prop("checked", false);
+
+			}
+			 
+			function LoadHistoryTable(response){
+				if(response.status == "error")
+					return;
+				var context = "";
+				document.getElementById("testing").innerHTML = context;
+				for (var i in response.data) 
+				{
+					var isOddrow = "";
+					var record = response.data[i];
+					if ( i % 2 === 0 )
+						isOddrow = " class='oddrow'";
+					context += "<tr" + isOddrow + "><td>" + (parseInt(i) + 1) + "</td>"
+							+ "<td>" + record.Machine_id + "</td>"
+							+ "<td>" + record.error_number + "</td>"
+							+ "<td>" + record.Time + "</td>"
+							+ "<td>" + record.Data.NO2 + "</td>"
+							+ "<td>" + record.Data.TDS  + "</td>"
+							+ "<td>" + record.Data.Cl  + "</td>"
+							+ "<td>" + record.Data.PH  + "</td>"
+							+ "<td>" + record.Data.NTU  + "</td>"
+							+ "</tr>"; 
+					document.getElementById("testing").innerHTML = context;
+				}
+			}
+
+			function LoadLatestData(response){
+				if(response.status == "error")
+					return;
+				var context = "";
+				document.getElementById("testing").innerHTML = context;
+				
+				var isOddrow = "";
+				var record = response.data;
+				context += "<tr class='oddrow'><td>最新</td>"
+						+ "<td>" + record.Machine_id + "</td>"
+						+ "<td>" + record.error_number + "</td>"
+						+ "<td>" + record.Time + "</td>"
+						+ "<td>" + record.Data.NO2 + "</td>"
+						+ "<td>" + record.Data.TDS  + "</td>"
+						+ "<td>" + record.Data.Cl  + "</td>"
+						+ "<td>" + record.Data.PH  + "</td>"
+						+ "<td>" + record.Data.NTU  + "</td>"
+						+ "</tr>"; 
+				document.getElementById("testing").innerHTML = context;
+				var data = {};
+				data.token = token;
+				data.PushNotiRegKey = "4a503e3cdd51524db57d0a4c17812ed90b52a47103366bf081ad0197ae8bc01b";
+				data.RegKey_provider = "APNS";
+				$.ajax({
+						type: 'POST',
+						url: '/FCM',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("設定家庭回傳結果：" + result)
+							document.getElementById("response").innerHTML += JSON.stringify(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                });
+			}
+
+			function GetFamily(response){
+				if(response.status == "error")
+					return;
+				var context = "";
+				document.getElementById("family").innerHTML = context;
+				for (var i in response.data) 
+				{
+					var isOddrow = "";
+					var record = response.data[i];
+					if ( i % 2 === 0 )
+						isOddrow = " class='oddrow'";
+					context += "<tr" + isOddrow + "><td>" + record.familyName + "</td>"
+							+ "<td>" + record.address + "</td>"
+							+ "<td>" + record.addressIndex + "</td>"
+							+ "<td>" + record.complex + "</td>"
+							+ "<td>" + record.purifier + "</td>"
+							+ "<td>" + record.purifierCompany  + "</td>"
+							+ "<td>" + record.filter  + "</td>"
+							+ "<td>" + record.filterType + "</td>"
+							+ "<td>" + record.filterTime  + "</td>"
+							+ "<td>" + record.numberOfTesting + "</td>"
+							+ "<td><button id = '" + i + "' onclick = 'EditFamily(id)'>編輯</button>" 
+							+ "<button id = '" + i + "' onclick = 'DeleteFamily(id)'>刪除</button></td>"
+							+ "</tr>"; 
+					document.getElementById("family").innerHTML = context;
+				}
+				familylist = response.data;
+			}
+
+			function EditFamily(id){
+				var edit = familylist[id];
+				familyId = id;
+				$("#f1").val(edit.familyName);
+				$("#f2").val(edit.address);
+				$("#f3").val(edit.addressIndex);
+				$("#f4").val(edit.complex);
+				$("#f6").val(edit.purifierCompany);
+				$("#f7").val(edit.filter);
+				$("#f8").val(edit.filterType);
+				$("#f9").val(edit.filterTime);
+				$("#f10").val(edit.numberOfTesting);
+				if(edit.purifier)
+					$("#f5").prop("checked", true);
+				else
+					$("#f5").prop("checked", false);
+				$(".edit").fadeIn();
+				$("#setfamily").fadeIn();
+			}
+
+			function DeleteFamily(id){
+				familylist.splice(id, 1);
+				var data = {};
+				data.token = token;
+				data.family = familylist;
+				$.ajax({
+					type: 'POST',
+					url: '/setfamily',
+					data: data,
+                    dataType: "json",
+                    success: function(result){
+                    	console.log("設定家庭回傳結果：" + result)
+						document.getElementById("response").innerHTML = JSON.stringify(result);
+						$("#setfamily").fadeOut();
+						$(".edit").fadeOut();
+						GetFamilyFromServer();
+                    },
+					failure: function(errMsg) {
+						alert(errMsg);
+					}
+                });
+			}
+
+			function GetFamilyFromServer(){
+				var data = {};
+				data.token = token;
+				console.log(data);
+				$.ajax({
+					type: 'POST',
+					url: '/getfamily',
+					data: data,
+                    dataType: "json",
+                    success: function(result){
+                    	console.log("載入家庭：" + result)
+						document.getElementById("response").innerHTML = JSON.stringify(result);
+						GetFamily(result);
+                    },
+					failure: function(errMsg) {
+						alert(errMsg);
+					}
+                });
+			}
+
+
+			$(document).ready(function(){
+				$("#login").click(function(){
+					console.log("enter login function");
+					var data = {};
+					data.email = $("#email").val();
+					data.password = $("#password").val();
+					console.log(data);
+					$.ajax({
+						type: 'POST',
+						url: '/login',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("登入回傳結果：" + result)
+							document.getElementById("response").innerHTML = JSON.stringify(result);
+							$("#login").fadeOut();
+							$("#logout").fadeIn();
+							$(".find").fadeIn();
+							SaveLoginParameters(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+				});
+
+
+				$("#logout").click(function(){
+					console.log("enter logout function");
+					token = "";
+					email = "";
+					password = "";
+					name= "";
+					birthday = "";
+					gender = "";
+					familylist = "";
+					$("#testing").html("");
+					$("#family").html("");
+					$("#token").val("");
+					$("#update_email").val("");
+					$("#update_password").val("");
+					$("#update_name").val("");
+					$("#update_birthday").val("");
+					$("#update_gender").prop("checked", false);
+					$(".edit").fadeOut();
+					$(".find").fadeOut();
+					$("#login").fadeIn();
+					$("#logout").fadeOut();
+				});
+
+
+				$("#signup").click(function(){
+					console.log("enter signup function");
+					var data = {};
+					data.email = $("#sign_email").val();
+					data.password = $("#sign_password").val();
+					data.name = $("#name").val();
+					data.birthday = $("#birthday").val();
+					if($("#gender").is(":checked"))
+						data.gender = true;
+					else
+						data.gender = false;
+					console.log(data);
+					$.ajax({
+						type: 'POST',
+						url: '/signup',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("註冊回傳結果：" + result)
+							document.getElementById("response").innerHTML = JSON.stringify(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+				});
+
+
+				$("#update").click(function(){
+					console.log("enter update function");
+					var data = {};
+					data.token = token;
+					data.password = $("#update_password").val();
+					data.name = $("#update_name").val();
+					data.birthday = $("#update_birthday").val();
+					if($("#update_gender").is(":checked"))
+						data.gender = true;
+					else
+						data.gender = false;
+					console.log(data);
+					$.ajax({
+						type: 'POST',
+						url: '/Update',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("修改資料回傳結果：" + result)
+							document.getElementById("response").innerHTML = JSON.stringify(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+				});
+				
+
+				$("#findall").click(function(){
+					console.log("enter findall function");
+					var data = {};
+					data.token = token;
+					console.log(data);
+					$.ajax({
+						type: 'POST',
+						url: '/FindAll',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("載入檢測資訊結果：" + result)
+							document.getElementById("response").innerHTML = JSON.stringify(result);
+							LoadHistoryTable(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+				});
+				
+
+				$("#findnew").click(function(){
+					console.log("enter findnew function");
+					var data = {};
+					data.token = token;
+					console.log(data);
+					$.ajax({
+						type: 'POST',
+						url: '/FindNew',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("載入最新檢測結果：" + result)
+							document.getElementById("response").innerHTML = JSON.stringify(result);
+							LoadLatestData(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+				});
+
+
+				$("#getfamily").click(function(){
+					console.log("enter getfamily function");
+					var data = {};
+					data.token = token;
+					console.log(data);
+					$.ajax({
+						type: 'POST',
+						url: '/getfamily',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("載入家庭：" + result)
+							document.getElementById("response").innerHTML += JSON.stringify(result);
+							GetFamily(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+				});
+
+
+				$("#setfamily").click(function(){
+					console.log("enter setfamily function");
+					console.log(familylist);
+					var temp = {};
+					if(isAdd)
+					{
+						temp.familyName = $("#f1").val();
+						temp.address = $("#f2").val();
+						temp.addressIndex = $("#f3").val();
+						temp.complex = $("#f4").val();
+						temp.purifierCompany = $("#f6").val();
+						temp.filter = $("#f7").val();
+						temp.filterType = $("#f8").val();
+						temp.filterTime = $("#f9").val();
+						if($("#f5").is(":checked"))
+							temp.purifier = true;
+						else
+							temp.purifier= false;
+						familylist.push(temp);
+						isAdd = false;
+					}
+					else
+					{
+						temp.familyName = $("#f1").val();
+						temp.address = $("#f2").val();
+						temp.addressIndex = $("#f3").val();
+						temp.complex = $("#f4").val();
+						temp.purifierCompany = $("#f6").val();
+						temp.filter = $("#f7").val();
+						temp.filterType = $("#f8").val();
+						temp.filterTime = $("#f9").val();
+						if($("#f5").is(":checked"))
+							temp.purifier = true;
+						else
+							temp.purifier= false;
+						familylist[familyId] = temp;
+						isAdd = false;
+					}
+					var data = {};
+					data.token = token;
+					data.family = familylist;
+					$.ajax({
+						type: 'POST',
+						url: '/setfamily',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("設定家庭回傳結果：" + result)
+							document.getElementById("response").innerHTML = JSON.stringify(result);
+							$("#setfamily").fadeOut();
+							$(".edit").fadeOut();
+							GetFamilyFromServer();
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+				});
+	
+	
+				$("#addfamily").click(function(){
+					console.log("enter setfamily function");
+					var data = {};
+					data.token = token;
+					console.log(data);
+					$.ajax({
+						type: 'POST',
+						url: '/getfamily',
+						data: data,
+                        dataType: "json",
+                        success: function(result){
+                        	console.log("載入家庭：" + result)
+							document.getElementById("response").innerHTML = JSON.stringify(result);
+							GetFamily(result);
+                        },
+						failure: function(errMsg) {
+							alert(errMsg);
+						}
+                    });
+                    isAdd = true;
+				});
+			});
+
+		</script>
+	</head>
+	<body>
+		<div>login
+			<form action="#" method="POST">
+				email: <input id = "email" type = "text" value = "123">
+				password: <input id = "password" type = "text" value = "123456">
+				<input id = "login" type = "button" value = "login">
+				<input id = "logout" type = "button" value = "logout" style = "display:none">
+				token: <input id = "token" type = "text" disabled style = "width: 300px">
+				<hr>
+			</form>
+	    </div>
+	    
+		<div>signup
+			<form action="#" method="POST">
+				email: <input id = "sign_email" type = "text" value = "123">
+				password: <input id = "sign_password" type = "text" value = "123456">
+				name: <input id = "name" type = "text" value = "Test君">
+				birthday: <input id = "birthday" type = "text" value = "07/06/2017">
+				gender: <input id = "gender" type = "checkbox">
+				<input id = "signup" type = "button" value = "signup">
+				<hr>
+			</form>
+	    </div>
+		
+		<div class = "find" style = "display:none">update
+			<form action="#" method="POST">
+				email: <input id = "update_email" type = "text" disabled="">
+				password: <input id = "update_password" type = "text">
+				name: <input id = "update_name" type = "text">
+				birthday: <input id = "update_birthday" type = "text">
+				gender: <input id = "update_gender" type = "checkbox">
+				<input id = "update" type = "button" value = "update">
+				<hr>
+			</form>
+	    </div>
+		
+		<div class = "find" style = "display:none">findall / findnew
+			<form action="#" method="POST">
+				<input id = "findall" type = "button" value = "FindAll">
+				<input id = "findnew" type = "button" value = "FindNew">
+			</form>
+	    </div>
+
+	     <div id = "recordsdiv">
+		    	<table>
+					<thead>
+						<tr>
+							<th rowspan="2">編號</th>
+							<th rowspan="2">機器代碼</th>
+							<th rowspan="2">錯誤代碼</th>
+							<th rowspan="2">時間</th>
+							<th colspan="5">檢測資料</th>
+						</tr>
+						<tr>
+							<th>NO2</th>
+							<th>TDS</th>
+							<th>Cl</th>
+							<th>pH</th>
+							<th>NTU</th>
+						</tr>
+					</thead>
+					<tbody id = "testing">
+					</tbody>
+			</table>
+	    </div>
+	    <hr>
+
+	    <div class = "find" style = "display:none">getfamily / setfamily / addfamily
+			<form action="#" method="POST">
+				<input id = "getfamily" type = "button" value = "getfamily">
+				<input id = "addfamily" type = "button" value = "addfamily">
+				<hr>
+			</form>
+	    </div>
+
+	    <div id = "familydiv">
+		    	<table>
+					<thead>
+						<tr>
+							<th>名稱</th>
+							<th>地址</th>
+							<th>地址索引值</th>
+							<th>社區</th>
+							<th>是否裝淨水器</th>
+							<th>淨水器廠牌</th>
+							<th>幾道淨水器</th>
+							<th>淨水器類型索引值</th>
+							<th>上次更換濾心時間</th>
+							<th>檢測次數</th>
+							<th>動作</th>
+						</tr>
+					</thead>
+					<tbody id = "family">
+					</tbody>
+				</table>
+	    </div>
+	    <div class = "edit" style = "display:none">add / edit family (If you want to add family, please press any "編輯" first.)
+			<form action="#" method="POST">
+				名稱：<input id = "f1" type = "text">
+				地址<input id = "f2" type = "text" disabled>
+				地址索引值<input id = "f3" type = "text" disabled>
+				社區<input id = "f4" type = "text">
+				<br>是否裝淨水器<input id = "f5" type = "checkbox">
+				淨水器廠牌<input id = "f6" type = "text">
+				幾道淨水器<input id = "f7" type = "text" disabled>
+				<br>淨水器類型索引值<input id = "f8" type = "text" disabled>
+				上次更換濾心時間<input id = "f9" type = "text">
+				檢測次數<input id = "f10" type = "text" disabled>
+				<input id = "setfamily" type = "button" value = "setfamily" style = "display:none">
+				<hr>
+			</form>
+	    </div>
+	    <hr>
+
+	  
+
+	    <div id = "response"></div>
+	</body>
+</html>
+
+<!--
+**************************************************************************
+* (C) Copyright 1992-2012 by Deitel & Associates, Inc. and               *
+* Pearson Education, Inc. All Rights Reserved.                           *
+*                                                                        *
+* DISCLAIMER: The authors and publisher of this book have used their     *
+* best efforts in preparing the book. These efforts include the          *
+* development, research, and testing of the theories and programs        *
+* to determine their effectiveness. The authors and publisher make       *
+* no warranty of any kind, expressed or implied, with regard to these    *
+* programs or to the documentation contained in these books. The authors *
+* and publisher shall not be liable in any event for incidental or       *
+* consequential damages in connection with, or arising out of, the       *
+* furnishing, performance, or use of these programs.                     *
+**************************************************************************
+-->
